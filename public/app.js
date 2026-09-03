@@ -140,7 +140,110 @@ function renderStagnantTable(list) {
     });
 }
 
+// Add this to your existing app.js
+
+const JIRA_BASE_URL = "https://nbt-marketing.atlassian.net/browse/";
+
+// Create the interactive pipeline overview
+async function loadInteractivePipeline() {
+    const { data: prospects, error } = await supabaseClient.from('nmmsb_prospects').select('*');
+    
+    if (error) {
+        console.error("Error fetching prospects:", error);
+        return;
+    }
+
+    // Define the specific pipeline order based on your workflow
+    const workflowStages = [
+        "INITIATING", 
+        "APPROACH", 
+        "BRIEFING SESSIONS/ DEMO", 
+        "SITE VISITS", 
+        "BQ/ PROPOSAL PREPARATION", 
+        "NEGOTIATION/ FOLLOW-UP"
+    ];
+
+    // Group active tickets by their current status
+    const groupedTickets = {};
+    workflowStages.forEach(stage => groupedTickets[stage] = []);
+
+    prospects.forEach(ticket => {
+        const status = ticket.current_status.toUpperCase();
+        if (workflowStages.includes(status)) {
+            groupedTickets[status].push(ticket);
+        }
+    });
+
+    renderPipelineBlocks(groupedTickets);
+}
+
+function renderPipelineBlocks(groupedTickets) {
+    const blocksContainer = document.getElementById('pipelineBlocks');
+    blocksContainer.innerHTML = '';
+
+    Object.keys(groupedTickets).forEach(status => {
+        const ticketsInStage = groupedTickets[status];
+        
+        // Create the clickable block
+        const block = document.createElement('div');
+        block.className = 'status-block';
+        block.innerHTML = `
+            <span class="status-name">${status}</span>
+            <span class="count">${ticketsInStage.length}</span>
+        `;
+        
+        // Attach click event to show details
+        block.addEventListener('click', () => showTicketDetails(status, ticketsInStage));
+        
+        blocksContainer.appendChild(block);
+    });
+}
+
+function showTicketDetails(status, tickets) {
+    const container = document.getElementById('ticketDetailsContainer');
+    const title = document.getElementById('selectedStatusTitle');
+    const list = document.getElementById('ticketList');
+    
+    // Update title
+    title.innerText = `${status} (${tickets.length} Prospects)`;
+    
+    // Clear previous list
+    list.innerHTML = '';
+
+    if (tickets.length === 0) {
+        list.innerHTML = '<p style="color: #5e6c84;">No active prospects in this stage.</p>';
+    } else {
+        // Generate clickable cards for each ticket
+        tickets.forEach(ticket => {
+            const card = document.createElement('a');
+            card.href = `${JIRA_BASE_URL}${ticket.issue_key}`;
+            card.target = '_blank'; // Opens in a new tab
+            card.className = 'ticket-card';
+            
+            card.innerHTML = `
+                <div class="ticket-key">${ticket.issue_key}</div>
+                <div class="ticket-summary">${ticket.summary}</div>
+                <div class="ticket-assignee">Assigned to: ${ticket.assignee}</div>
+            `;
+            
+            list.appendChild(card);
+        });
+    }
+
+    // Reveal the container
+    container.style.display = 'block';
+}
+
+// Close button logic for the details container
+document.getElementById('closeDetailsBtn').addEventListener('click', () => {
+    document.getElementById('ticketDetailsContainer').style.display = 'none';
+});
+
+// Trigger this function when the page loads
+
+
 // --- Modify your initial load call at the bottom of the file to include this ---
 // Delete the old loadDashboardMetrics(30); and replace it with:
+loadInteractivePipeline();
 loadDashboardMetrics(30);
 loadStagnantProspects();
