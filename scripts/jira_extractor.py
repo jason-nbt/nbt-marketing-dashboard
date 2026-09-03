@@ -72,7 +72,9 @@ def fetch_and_sync():
                         "transitioned_at": created_date
                     }
                     supabase.table("nmmsb_transitions").upsert(
-                        transition_payload, ignore_duplicates=True
+                        transition_payload, 
+                        ignore_duplicates=True,
+                        on_conflict="issue_key,to_status,transitioned_at"
                     ).execute()
                     
     print("Database sync complete.")
