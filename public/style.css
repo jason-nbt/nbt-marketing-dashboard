@@ -235,3 +235,26 @@ td {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* Jira Button & Comment Styles */
+.view-jira-btn {
+    display: inline-block;
+    background: #f4f5f7;
+    color: #0052CC;
+    padding: 6px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.view-jira-btn:hover {
+    background: #ebecf0;
+    text-decoration: underline;
+}
+
+/* Jira injects <p> tags into rendered comments; this removes their default spacing */
+.ticket-comment p {
+    margin: 4px 0;
+}

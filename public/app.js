@@ -204,33 +204,44 @@ function showTicketDetails(status, tickets) {
     const title = document.getElementById('selectedStatusTitle');
     const list = document.getElementById('ticketList');
     
-    // Update title
     title.innerText = `${status} (${tickets.length} Prospects)`;
-    
-    // Clear previous list
     list.innerHTML = '';
 
     if (tickets.length === 0) {
         list.innerHTML = '<p style="color: #5e6c84;">No active prospects in this stage.</p>';
     } else {
-        // Generate clickable cards for each ticket
         tickets.forEach(ticket => {
-            const card = document.createElement('a');
-            card.href = `${JIRA_BASE_URL}${ticket.issue_key}`;
-            card.target = '_blank'; // Opens in a new tab
+            const card = document.createElement('div');
             card.className = 'ticket-card';
             
+            // Build the card with a hidden comment section
             card.innerHTML = `
-                <div class="ticket-key">${ticket.issue_key}</div>
-                <div class="ticket-summary">${ticket.summary}</div>
-                <div class="ticket-assignee">Assigned to: ${ticket.assignee}</div>
+                <div class="ticket-header" style="cursor: pointer;">
+                    <div class="ticket-key">${ticket.issue_key}</div>
+                    <div class="ticket-summary">${ticket.summary}</div>
+                    <div class="ticket-assignee">Assigned to: ${ticket.assignee}</div>
+                </div>
+                <div class="ticket-comment" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #dfe1e6;">
+                    <div style="font-size: 13px; color: #172b4d; margin-bottom: 12px; max-height: 150px; overflow-y: auto;">
+                        <strong>Latest Update:</strong><br>
+                        ${ticket.latest_comment || '<i>No comments yet.</i>'}
+                    </div>
+                    <a href="${JIRA_BASE_URL}${ticket.issue_key}" target="_blank" class="view-jira-btn">View more in Jira &rarr;</a>
+                </div>
             `;
+            
+            // Add the click listener to toggle the comment visibility
+            const header = card.querySelector('.ticket-header');
+            const commentSection = card.querySelector('.ticket-comment');
+            
+            header.addEventListener('click', () => {
+                const isHidden = commentSection.style.display === 'none';
+                commentSection.style.display = isHidden ? 'block' : 'none';
+            });
             
             list.appendChild(card);
         });
     }
-
-    // Reveal the container
     container.style.display = 'block';
 }
 

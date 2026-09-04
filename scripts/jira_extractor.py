@@ -15,7 +15,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def fetch_and_sync():
-    url = f"https://{JIRA_DOMAIN}/rest/api/3/search/jql"
+    url = f"https://{JIRA_DOMAIN}/rest/api/2/search/jql"
     auth = HTTPBasicAuth(JIRA_EMAIL, JIRA_API_TOKEN)
     headers = {
         "Accept": "application/json",
@@ -25,8 +25,8 @@ def fetch_and_sync():
     # Using POST requires sending the parameters as a JSON payload
     payload = {
         "jql": 'project = KAN ORDER BY created DESC',
-        "expand": "changelog", 
-        "fields": ["summary", "status", "assignee", "created"],
+        "expand": "changelog",
+        "fields": ["*all"], 
         "maxResults": 100
     }
 
@@ -49,12 +49,24 @@ def fetch_and_sync():
         key = issue["key"]
         fields = issue.get("fields", {})
         
+        # 2. Extract directly from the standard fields array (API v2)
+        comment_obj = fields.get("comment")
+        comments_array = comment_obj.get("comments", []) if comment_obj else []
+        
+        latest_comment = "<i>No comments yet.</i>"
+        if comments_array:
+            # Grab the last item and convert line breaks to HTML
+            raw_comment = comments_array[-1].get("body", "<i>No comments yet.</i>")
+            latest_comment = raw_comment.replace("\n", "<br>")
+        
+        # 3. Add latest_comment to your Supabase upsert payload
         prospect_payload = {
             "issue_key": key,
             "summary": fields.get("summary", ""),
             "assignee": fields.get("assignee", {}).get("displayName", "Unassigned") if fields.get("assignee") else "Unassigned",
             "current_status": fields.get("status", {}).get("name", "") if fields.get("status") else "",
-            "created_at": fields.get("created")
+            "created_at": fields.get("created"),
+            "latest_comment": latest_comment # NEW FIELD
         }
         
         supabase.table("nmmsb_prospects").upsert(prospect_payload).execute()
