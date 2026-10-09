@@ -133,19 +133,26 @@ function renderStagnantTable(list) {
         if (item.daysStagnant > 10) severityColor = '#de350b'; // Critical Red for > 30 days
         if (item.daysStagnant > 15) severityColor = '#bf2600'; // Dark Red for > 60 days
 
-        // Handle comment text for tooltip
-        const safeComment = item.latest_comment ? item.latest_comment.replace(/"/g, '&quot;') : 'No comments yet';
+        let rawComment = item.latest_comment || '';
+
+        // For tooltip (hover): Convert <br> back to native newlines (\n), remove other HTML, escape quotes
+        let tooltipText = rawComment.replace(/<br\s*[\/]?>/gi, '\n').replace(/<[^>]*>?/gm, '').replace(/"/g, '&quot;');
+        if (!tooltipText.trim()) tooltipText = 'No comments yet';
+
+        // For display in table: Convert <br> to space to force a single line, remove other HTML
+        let displayComment = rawComment.replace(/<br\s*[\/]?>/gi, ' ').replace(/<[^>]*>?/gm, '');
+        if (!displayComment.trim()) displayComment = '<i style="color:#5e6c84;">No comments yet</i>';
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong><a href="https://nbt-marketing.atlassian.net/browse/${item.issue_key}" target="_blank" style="color: #0052CC; text-decoration: none;">${item.issue_key}</a></strong></td>
-            <td>${item.summary}</td>
-            <td>${item.assignee}</td>
-            <td><span class="status-badge">${item.current_status}</span></td>
-            <td style="color: ${severityColor}; font-weight: bold;">${item.daysStagnant} Days</td>
-            <td style="max-width: 250px;">
-                <div style="font-size:12px; color:#172b4d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default;" title="${safeComment}">
-                    ${item.latest_comment || '<i style="color:#5e6c84;">No comments yet</i>'}
+            <td style="padding: 10px 12px; vertical-align: middle;"><strong><a href="https://nbt-marketing.atlassian.net/browse/${item.issue_key}" target="_blank" style="color: #0052CC; text-decoration: none;">${item.issue_key}</a></strong></td>
+            <td style="padding: 10px 12px; vertical-align: middle;">${item.summary}</td>
+            <td style="padding: 10px 12px; vertical-align: middle;">${item.assignee}</td>
+            <td style="padding: 10px 12px; vertical-align: middle;"><span class="status-badge">${item.current_status}</span></td>
+            <td style="color: ${severityColor}; font-weight: bold; padding: 10px 12px; vertical-align: middle;">${item.daysStagnant} Days</td>
+            <td style="max-width: 250px; padding: 10px 12px; vertical-align: middle;">
+                <div style="font-size:12px; color:#172b4d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default;" title="${tooltipText}">
+                    ${displayComment}
                 </div>
             </td>
         `;
@@ -226,7 +233,7 @@ function showTicketDetails(status, tickets) {
             const card = document.createElement('div');
             card.className = 'ticket-card';
             
-            // Format comment for the detailed view
+            // Keep HTML for the detail view modal
             const safeComment = ticket.latest_comment || '<i>No comments yet.</i>';
 
             card.innerHTML = `
