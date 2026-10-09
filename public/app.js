@@ -123,7 +123,7 @@ function renderStagnantTable(list) {
     tbody.innerHTML = '';
 
     if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: #5e6c84;">No stagnant prospects! Your pipeline is moving well. 🎉</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: #5e6c84;">No stagnant prospects! Your pipeline is moving well. 🎉</td></tr>';
         return;
     }
 
@@ -133,6 +133,9 @@ function renderStagnantTable(list) {
         if (item.daysStagnant > 10) severityColor = '#de350b'; // Critical Red for > 30 days
         if (item.daysStagnant > 15) severityColor = '#bf2600'; // Dark Red for > 60 days
 
+        // Handle comment text for tooltip
+        const safeComment = item.latest_comment ? item.latest_comment.replace(/"/g, '&quot;') : 'No comments yet';
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong><a href="https://nbt-marketing.atlassian.net/browse/${item.issue_key}" target="_blank" style="color: #0052CC; text-decoration: none;">${item.issue_key}</a></strong></td>
@@ -140,16 +143,18 @@ function renderStagnantTable(list) {
             <td>${item.assignee}</td>
             <td><span class="status-badge">${item.current_status}</span></td>
             <td style="color: ${severityColor}; font-weight: bold;">${item.daysStagnant} Days</td>
+            <td style="max-width: 250px;">
+                <div style="font-size:12px; color:#172b4d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default;" title="${safeComment}">
+                    ${item.latest_comment || '<i style="color:#5e6c84;">No comments yet</i>'}
+                </div>
+            </td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-// Add this to your existing app.js
-
 const JIRA_BASE_URL = "https://nbt-marketing.atlassian.net/browse/";
 
-// Create the interactive pipeline overview
 async function loadInteractivePipeline() {
     const { data: prospects, error } = await supabaseClient.from('nmmsb_prospects').select('*');
     
@@ -158,7 +163,6 @@ async function loadInteractivePipeline() {
         return;
     }
 
-    // Define the specific pipeline order based on your workflow
     const workflowStages = [
         "INITIATING", 
         "APPROACH", 
@@ -166,11 +170,10 @@ async function loadInteractivePipeline() {
         "SITE VISITS", 
         "BQ/ PROPOSAL PREPARATION", 
         "NEGOTIATION/ FOLLOW-UP",
-        "CLOSED WON",             // NEW
-        "CLOSED LOST"             // NEW
+        "CLOSED WON",
+        "CLOSED LOST"
     ];
 
-    // Group active tickets by their current status
     const groupedTickets = {};
     workflowStages.forEach(stage => groupedTickets[stage] = []);
 
@@ -191,20 +194,17 @@ function renderPipelineBlocks(groupedTickets) {
     Object.keys(groupedTickets).forEach(status => {
         const ticketsInStage = groupedTickets[status];
         
-        // Create the clickable block
         const block = document.createElement('div');
         block.className = 'status-block';
 		
-		// Add specific colors for Won/Lost
-        if (status === 'CLOSED WON') block.style.background = '#00875A'; // Jira Green
-        if (status === 'CLOSED LOST') block.style.background = '#DE350B'; // Jira Red
+        if (status === 'CLOSED WON') block.style.background = '#00875A';
+        if (status === 'CLOSED LOST') block.style.background = '#DE350B';
 		
         block.innerHTML = `
             <span class="status-name">${status}</span>
             <span class="count">${ticketsInStage.length}</span>
         `;
         
-        // Attach click event to show details
         block.addEventListener('click', () => showTicketDetails(status, ticketsInStage));
         
         blocksContainer.appendChild(block);
@@ -226,7 +226,9 @@ function showTicketDetails(status, tickets) {
             const card = document.createElement('div');
             card.className = 'ticket-card';
             
-            // Build the card with a hidden comment section
+            // Format comment for the detailed view
+            const safeComment = ticket.latest_comment || '<i>No comments yet.</i>';
+
             card.innerHTML = `
                 <div class="ticket-header" style="cursor: pointer;">
                     <div class="ticket-key">${ticket.issue_key}</div>
@@ -236,13 +238,12 @@ function showTicketDetails(status, tickets) {
                 <div class="ticket-comment" style="display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid #dfe1e6;">
                     <div style="font-size: 13px; color: #172b4d; margin-bottom: 12px; max-height: 150px; overflow-y: auto;">
                         <strong>Latest Update:</strong><br>
-                        ${ticket.latest_comment || '<i>No comments yet.</i>'}
+                        ${safeComment}
                     </div>
                     <a href="${JIRA_BASE_URL}${ticket.issue_key}" target="_blank" class="view-jira-btn">View more in Jira &rarr;</a>
                 </div>
             `;
             
-            // Add the click listener to toggle the comment visibility
             const header = card.querySelector('.ticket-header');
             const commentSection = card.querySelector('.ticket-comment');
             
@@ -257,16 +258,10 @@ function showTicketDetails(status, tickets) {
     container.style.display = 'block';
 }
 
-// Close button logic for the details container
 document.getElementById('closeDetailsBtn').addEventListener('click', () => {
     document.getElementById('ticketDetailsContainer').style.display = 'none';
 });
 
-// Trigger this function when the page loads
-
-
-// --- Modify your initial load call at the bottom of the file to include this ---
-// Delete the old loadDashboardMetrics(30); and replace it with:
 loadInteractivePipeline();
 loadDashboardMetrics(30);
 loadStagnantProspects();
